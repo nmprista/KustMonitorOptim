@@ -15,6 +15,9 @@ do_summary_stratified_mean <- function (x, target_var, strata_var, strata_size_v
 	# 2019-05-11: added n_strata sampled to output - in case only disturbed stations are sampled a strata may end up not being sampled (overall mean will be biased)
 	# 2019-05-15: correction of st_var_mean
 	# 2019-05-15: added stratum ci (based on t distribution)
+	# 2022-05-17: fixed quantile t-dist: was n and should have been n-1
+	# 2022-05-17: fixed bug: strata level confidence intervals were not coming out
+	# 2022-05-17: improvement: added tvalue and error margin to strata level outputs
 	
 	require(data.table)
 
@@ -40,7 +43,7 @@ do_summary_stratified_mean <- function (x, target_var, strata_var, strata_size_v
 	# stratified variance
 		# strata summary
 			b1<-x[,list(stratum_size=eval(size)[1], variable = target_var, n=sum(!is.na(eval(values))), mean_x = mean(eval(values), na.rm=T), var_x = var(eval(values), na.rm=T), var_mean_x = var(eval(values), na.rm=T)/sum(!is.na(eval(values))), se_mean_x = sd(eval(values), na.rm=T)/sqrt(sum(!is.na(eval(values))))), eval(stratum)][order(eval(stratum))]; 
-			b1[, c(.SD, rse_mean_x = round(se_mean_x/mean_x*100,1),clow_mean=mean_x-qt(0.975,n)*se_mean_x, chigh_mean=mean_x+qt(0.975,n)*se_mean_x),stratum]
+			b1[, `:=`(rse_mean_x = round(se_mean_x/mean_x*100,1), tvalue = qt(0.975,n-1), error_margin = qt(0.975,n-1)*se_mean_x, clow_mean_x = mean_x-qt(0.975,n-1)*se_mean_x, chigh_mean_x=mean_x+qt(0.975,n-1)*se_mean_x),stratum]
 		# stratified mean
 			st_mean<-sum(b1$mean_x*b1$stratum_size/sum(b1$stratum_size))
 		# stratified variance of the mean
@@ -51,6 +54,5 @@ do_summary_stratified_mean <- function (x, target_var, strata_var, strata_size_v
 		# stratified cv/rse of the mean 
 			st_rse_mean<-round(st_se_mean/st_mean*100,1)
 		
-	list(pop_res = data.frame(type="stratified", variable = target_var, expect_strata = paste(strata_to_keep, collapse=","), samp_strata = paste(b1$stratum, collapse=","), n_tot = sum(b1$n), n_strata = paste(b1$n,collapse=","), mean = st_mean, var_mean = st_var_mean, se_mean = st_se_mean, rse_mean = st_rse_mean, clow_mean=st_mean-2*st_se_mean, chigh_mean=st_mean+2*st_se_mean), stratum_res = b1, type="stratified")
-
+	list(pop_res = data.frame(type="stratified", variable = target_var, expect_strata = paste(strata_to_keep, collapse=","), samp_strata = paste(b1$stratum, collapse=","), n_tot = sum(b1$n), n_strata = paste(b1$n,collapse=","), mean = st_mean, var_mean = st_var_mean, se_mean = st_se_mean, rse_mean = st_rse_mean, tdist = qt(0.975,sum(b1$n)-1), error_margin = qt(0.975,sum(b1$n)-1)*st_se_mean, clow_mean=st_mean-qt(0.975,sum(b1$n)-1)*st_se_mean, chigh_mean=st_mean+qt(0.975,sum(b1$n)-1)*st_se_mean), stratum_res = data.frame(b1), type="stratified")
 }		
