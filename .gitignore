@@ -37,3 +37,4 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+000_Funs/funs_plotGoogleMaps.R
